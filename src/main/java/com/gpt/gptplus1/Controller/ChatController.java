@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value;
 
 public class ChatController {
 
-    @Value("${my.property}")
-    private String myProperty;
+
 
 }
