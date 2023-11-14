@@ -27,6 +27,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }catch (UsernameNotFoundException e){return null;}
 
    }
+   public boolean isUserEnabled(String email){
+       User user = userRepo.findByEmail(email);
+         return user != null && user.isEnabled();
+   }
     private Set<SimpleGrantedAuthority> getAuthority(User user) {
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_"+user.getRole()));
