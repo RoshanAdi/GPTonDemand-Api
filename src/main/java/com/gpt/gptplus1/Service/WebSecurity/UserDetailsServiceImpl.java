@@ -24,16 +24,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             User user = userRepo.findByEmail(email);
             return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(), getAuthority(user));
 
-
         }catch (UsernameNotFoundException e){return null;}
 
    }
+   public boolean isUserEnabled(String email){
+       User user = userRepo.findByEmail(email);
+         return user != null && user.isEnabled();
+   }
     private Set<SimpleGrantedAuthority> getAuthority(User user) {
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();
-
         authorities.add(new SimpleGrantedAuthority("ROLE_"+user.getRole()));
-        System.out.println("printing generated authorities "+authorities);
-        System.out.println("printing role used for token "+user.getRole());
         return authorities;
     }
 
