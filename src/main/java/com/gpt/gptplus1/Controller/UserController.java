@@ -2,11 +2,12 @@ package com.gpt.gptplus1.Controller;
 
 import com.gpt.gptplus1.Entity.ResponseMessage;
 import com.gpt.gptplus1.Entity.User;
-import com.gpt.gptplus1.Service.Email.VerificationEmail;
+import com.gpt.gptplus1.Service.Email.SendEmail;
 import com.gpt.gptplus1.Service.WebSecurity.AuthToken;
 import com.gpt.gptplus1.Service.WebSecurity.TokenProvider;
 import com.gpt.gptplus1.Service.WebSecurity.UserDetailsServiceImpl;
 import com.gpt.gptplus1.Service.WebSecurity.UserService;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,8 +20,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.RedirectView;
+
+import java.io.UnsupportedEncodingException;
+import java.util.Objects;
 
 
 @RestController
@@ -36,7 +39,7 @@ public class UserController {
     @Autowired
     private UserService userService;
     @Autowired
-    private VerificationEmail verificationEmail;
+    private SendEmail sendEmail;
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
     @PostMapping(value="/api1/register" )
@@ -64,7 +67,6 @@ public class UserController {
                             loginUser.getPassword()
                     )
             );
-            // Check if the user is enabled
 
             if (!userDetailsService.isUserEnabled(loginUser.getEmail())) {
 
@@ -82,10 +84,41 @@ public class UserController {
         }
     }
 
-    @GetMapping("/api1/verify")
+    @PostMapping(value = "/api1/reset-password")
+    public ResponseEntity<?> ResetPW(@RequestBody User loginUser, HttpServletRequest request) throws AuthenticationException {
+        try {
+            if (userDetailsService.loadUserByUsername(loginUser.getEmail())==null) {
+                return ResponseEntity.status(399)
+                        .body("");}
+            User user = userDetailsService.loadUser4Reset(loginUser.getEmail());
+            String siteURL = request.getRequestURL().toString();
+            sendEmail.sendCodes(user,siteURL.replace(request.getServletPath(),"")); // remove this request
+            return ResponseEntity.ok("");
+        } catch (AuthenticationException | NullPointerException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid username or password");
+        } catch (MessagingException| UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    @PostMapping(value = "/api1/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestBody User loginUser) {
+        try {
+            if (Objects.equals(loginUser.getPassword(), userDetailsService.loadUser4Reset(loginUser.getEmail()).getVerificationCode())) {
+                System.out.println("sending redirect");
+                return ResponseEntity.status(200).body("{\"status\": \"success\"}");
+            }
+            return ResponseEntity.status(399).body("{\"status\": \"fail\"}");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("{\"status\": \"error\"}");
+        }
+    }
+
+    @GetMapping("/api1/verify-account") // for capturing email verification link
 
     public RedirectView verifyUser(@Param("code") String code) {
-        if (verificationEmail.verify(code)) {
+        if (sendEmail.verify(code)) {
             return new RedirectView(clientURL+"reg-success");
 
         } else {

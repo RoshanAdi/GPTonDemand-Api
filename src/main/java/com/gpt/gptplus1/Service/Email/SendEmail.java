@@ -4,6 +4,7 @@ import com.gpt.gptplus1.Entity.User;
 import com.gpt.gptplus1.Repository.UserRepo;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import net.bytebuddy.utility.RandomString;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
 @Service
-public class VerificationEmail {
+public class SendEmail {
 
     @Autowired
     private JavaMailSender mailSender;
@@ -36,14 +37,39 @@ public class VerificationEmail {
         helper.setSubject(subject);
 
         content = content.replace("[[name]]", user.getFirstName());
-        String verifyURL = siteURL + "/api1/verify?code=" + user.getVerificationCode();
+        String verifyURL = siteURL + "/api1/verify-account?code=" + user.getVerificationCode();
         content = content.replace("[[URL]]", verifyURL);
 
         helper.setText(content, true);
 
         mailSender.send(message);
     }
+    public void sendCodes(User user, String siteURL) throws UnsupportedEncodingException, MessagingException {
+        String toAddress = user.getEmail();
+        String fromAddress = "smsemail83@gmail.com";
+        String senderName = "GPTPlus";
+        String subject = "Your verification code";
+        String content = "Dear [[name]],<br>"
+                + "your one time verification code is [[code]]:<br>"
+                + "Thank you,<br>"
+                + "Roshan.";
 
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message);
+
+        helper.setFrom(fromAddress, senderName);
+        helper.setTo(toAddress);
+        helper.setSubject(subject);
+        content = content.replace("[[name]]", user.getFirstName());
+        String randomCode = RandomString.make(6);
+        user.setVerificationCode(randomCode);
+        userRepo.save(user);
+        content = content.replace("[[code]]", randomCode);
+
+        helper.setText(content, true);
+
+        mailSender.send(message);
+    }
     public boolean verify(String verificationCode) {
         User user = userRepo.findByVerificationCode(verificationCode);
         if (user == null || user.isEnabled()) {
