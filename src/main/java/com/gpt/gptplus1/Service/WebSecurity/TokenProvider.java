@@ -67,7 +67,6 @@ public class TokenProvider implements Serializable {
                 .signWith(SignatureAlgorithm.HS256, SIGNING_KEY)
                 .compact();
     }
-
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = getUsernameFromToken(token);
         System.out.println("token username "+username);

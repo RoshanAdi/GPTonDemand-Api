@@ -10,8 +10,10 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Random;
+
 @Service
-public class VerificationEmail {
+public class SendEmail {
 
     @Autowired
     private JavaMailSender mailSender;
@@ -36,14 +38,50 @@ public class VerificationEmail {
         helper.setSubject(subject);
 
         content = content.replace("[[name]]", user.getFirstName());
-        String verifyURL = siteURL + "/api1/verify?code=" + user.getVerificationCode();
+        String verifyURL = siteURL + "/api1/verify-account?code=" + user.getVerificationCode();
         content = content.replace("[[URL]]", verifyURL);
 
         helper.setText(content, true);
 
         mailSender.send(message);
     }
+    public void sendCodes(User user, String siteURL) throws UnsupportedEncodingException, MessagingException {
+        String toAddress = user.getEmail();
+        String fromAddress = "smsemail83@gmail.com";
+        String senderName = "GPTPlus";
+        String subject = "Your verification code";
+        String content = "Dear [[name]],<br>"
+                + "your one-time verification code is <span style=\"background-color: yellow; font-weight: bold;\">[[code]]</span>:<br>"
+                + "Thank you,<br>"
+                + "GPTPlus.";
 
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message);
+
+        helper.setFrom(fromAddress, senderName);
+        helper.setTo(toAddress);
+        helper.setSubject(subject);
+        content = content.replace("[[name]]", user.getFirstName());
+        String randomNumber = generateRandomNumericString();
+        user.setVerificationCode(randomNumber);
+        userRepo.save(user);
+        content = content.replace("[[code]]", randomNumber);
+
+        helper.setText(content, true);
+
+        mailSender.send(message);
+    }
+    private static String generateRandomNumericString() {
+        Random random = new Random();
+        StringBuilder numericString = new StringBuilder(6);
+
+        for (int i = 0; i < 6; i++) {
+            int digit = random.nextInt(10);
+            numericString.append(digit);
+        }
+
+        return numericString.toString();
+    }
     public boolean verify(String verificationCode) {
         User user = userRepo.findByVerificationCode(verificationCode);
         if (user == null || user.isEnabled()) {
@@ -52,9 +90,6 @@ public class VerificationEmail {
         else {
             user.setEnabled(true);
             userRepo.save(user);
-           // student.setRole("Student");    //cannot log until role sets at this point.
-          //  studentRepo.save(student);
-
             return true;
         }
 

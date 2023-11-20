@@ -37,4 +37,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return authorities;
     }
 
+    public User loadUser4Reset(String email){
+        return userRepo.findByEmail(email);
+    }
+
 }
