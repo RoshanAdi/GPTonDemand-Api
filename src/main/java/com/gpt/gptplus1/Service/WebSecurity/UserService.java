@@ -36,5 +36,11 @@ public User getUserByEmail(String email){
             e.toString();
         }
     }
+    public void saveNewPW(User user){
+    User userExsisting = userRepo.findByEmail(user.getEmail());
+    userExsisting.setPassword(passwordEncoder.encode(user.getPassword()));
+    userExsisting.setVerificationCode(null);
+    userRepo.save(userExsisting);
+    }
 
 }

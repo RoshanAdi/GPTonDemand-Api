@@ -77,6 +77,7 @@ public class UserController {
             SecurityContextHolder.getContext().setAuthentication(authentication);
             final String token = jwtTokenUtil.generateToken(authentication);
 
+
             return ResponseEntity.ok(new AuthToken(token));
         } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -86,6 +87,7 @@ public class UserController {
 
     @PostMapping(value = "/api1/reset-password")
     public ResponseEntity<?> ResetPW(@RequestBody User loginUser, HttpServletRequest request) throws AuthenticationException {
+        System.out.println(loginUser.getEmail());
         try {
             if (userDetailsService.loadUserByUsername(loginUser.getEmail())==null) {
                 return ResponseEntity.status(399)
@@ -103,16 +105,29 @@ public class UserController {
     }
     @PostMapping(value = "/api1/verify-email")
     public ResponseEntity<?> verifyEmail(@RequestBody User loginUser) {
-        try {
-            if (Objects.equals(loginUser.getPassword(), userDetailsService.loadUser4Reset(loginUser.getEmail()).getVerificationCode())) {
-                System.out.println("sending redirect");
-                return ResponseEntity.status(200).body("{\"status\": \"success\"}");
+        String password = userDetailsService.loadUser4Reset(loginUser.getEmail()).getPassword();
+
+        if (Objects.equals(loginUser.getVerificationCode(), userDetailsService.loadUser4Reset(loginUser.getEmail()).getVerificationCode())) {
+            try {
+                userService.saveNewPW(loginUser);
+                final Authentication authentication = authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                loginUser.getEmail(),
+                                loginUser.getPassword()
+                        )
+                );
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                final String token = jwtTokenUtil.generateToken(authentication);
+
+                return ResponseEntity.ok(new AuthToken(token));
+            } catch (AuthenticationException e) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body("Invalid username or password");
             }
-            return ResponseEntity.status(399).body("{\"status\": \"fail\"}");
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("{\"status\": \"error\"}");
         }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body("Error");
     }
 
     @GetMapping("/api1/verify-account") // for capturing email verification link
