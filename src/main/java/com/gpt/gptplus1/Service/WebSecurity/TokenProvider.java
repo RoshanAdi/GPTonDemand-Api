@@ -29,16 +29,28 @@ public class TokenProvider implements Serializable {
     public String AUTHORITIES_KEY;
 
     public String getUsernameFromToken(String token) {
-        return getClaimFromToken(token, Claims::getSubject);
+        try {
+            return getClaimFromToken(token, Claims::getSubject);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
+        try {
+            return getClaimFromToken(token, Claims::getExpiration);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = getAllClaimsFromToken(token);
-        return claimsResolver.apply(claims);
+        try {
+            final Claims claims = getAllClaimsFromToken(token);
+            return claimsResolver.apply(claims);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private Claims getAllClaimsFromToken(String token) {
@@ -50,12 +62,11 @@ public class TokenProvider implements Serializable {
 
     private Boolean isTokenExpired(String token) {
         final Date expiration = getExpirationDateFromToken(token);
-        return expiration.before(new Date());
+        return expiration != null && expiration.before(new Date());
     }
 
     public String generateToken(Authentication authentication) {
-        System.out.println("generating token...");
-         String authorities = authentication.getAuthorities().stream()
+        String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
@@ -63,30 +74,36 @@ public class TokenProvider implements Serializable {
                 .setSubject(authentication.getName())
                 .claim(AUTHORITIES_KEY, authorities)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + TOKEN_VALIDITY*1000))
+                .setExpiration(new Date(System.currentTimeMillis() + TOKEN_VALIDITY * 1000))
                 .signWith(SignatureAlgorithm.HS256, SIGNING_KEY)
                 .compact();
     }
+
     public Boolean validateToken(String token, UserDetails userDetails) {
-        final String username = getUsernameFromToken(token);
-        System.out.println("token username "+username);
-        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        try {
+            final String username = getUsernameFromToken(token);
+            return (username != null && username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     UsernamePasswordAuthenticationToken getAuthenticationToken(final String token, final Authentication existingAuth, final UserDetails userDetails) {
-        System.out.println("Getting authkey"+token);
-        final JwtParser jwtParser = Jwts.parser().setSigningKey(SIGNING_KEY);
+        try {
+            final JwtParser jwtParser = Jwts.parser().setSigningKey(SIGNING_KEY);
 
-        final Jws<Claims> claimsJws = jwtParser.parseClaimsJws(token);
+            final Jws<Claims> claimsJws = jwtParser.parseClaimsJws(token);
 
-        final Claims claims = claimsJws.getBody();
+            final Claims claims = claimsJws.getBody();
 
-        final Collection<? extends GrantedAuthority> authorities =
-                Arrays.stream(claims.get(AUTHORITIES_KEY).toString().split(","))
-                        .map(SimpleGrantedAuthority::new)
-                        .collect(Collectors.toList());
-        System.out.println("userdetail authorites "+userDetails.getAuthorities());
-        return new UsernamePasswordAuthenticationToken(userDetails, "", authorities);
+            final Collection<? extends GrantedAuthority> authorities =
+                    Arrays.stream(claims.get(AUTHORITIES_KEY).toString().split(","))
+                            .map(SimpleGrantedAuthority::new)
+                            .collect(Collectors.toList());
+
+            return new UsernamePasswordAuthenticationToken(userDetails, "", authorities);
+        } catch (Exception e) {
+            return null;
+        }
     }
-
 }

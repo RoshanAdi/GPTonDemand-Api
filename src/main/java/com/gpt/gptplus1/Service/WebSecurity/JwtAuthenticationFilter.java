@@ -11,10 +11,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Service;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-
+@Service
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Value("${jwt.header.string}")
@@ -48,10 +49,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } else {
             logger.warn("Couldn't find bearer string, header will be ignored");
         }
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null)  {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
             if (jwtTokenUtil.validateToken(authToken, userDetails)) {
                 UsernamePasswordAuthenticationToken authentication = jwtTokenUtil.getAuthenticationToken(authToken, SecurityContextHolder.getContext().getAuthentication(), userDetails);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));

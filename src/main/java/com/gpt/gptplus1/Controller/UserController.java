@@ -15,10 +15,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -32,8 +34,7 @@ public class UserController {
     @Value("${frontEnd.URL}")
     private String clientURL;
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+
     @Autowired
     private TokenProvider jwtTokenUtil;
     @Autowired
@@ -42,6 +43,8 @@ public class UserController {
     private SendEmail sendEmail;
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
+    @Autowired
+    AuthenticationProvider authenticationProvider;
     @PostMapping(value="/api1/register" )
     public ResponseMessage saveUser(@RequestBody User user, HttpServletRequest request) {
         String message="";
@@ -61,7 +64,7 @@ public class UserController {
     @PostMapping(value = "/api1/login")
     public ResponseEntity<?> generateToken(@RequestBody User loginUser) throws AuthenticationException {
         try {
-            final Authentication authentication = authenticationManager.authenticate(
+            final Authentication authentication = authenticationProvider.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginUser.getEmail(),
                             loginUser.getPassword()
@@ -110,7 +113,7 @@ public class UserController {
         if (Objects.equals(loginUser.getVerificationCode(), userDetailsService.loadUser4Reset(loginUser.getEmail()).getVerificationCode())) {
             try {
                 userService.saveNewPW(loginUser);
-                final Authentication authentication = authenticationManager.authenticate(
+                final Authentication authentication = authenticationProvider.authenticate(
                         new UsernamePasswordAuthenticationToken(
                                 loginUser.getEmail(),
                                 loginUser.getPassword()
@@ -140,5 +143,11 @@ public class UserController {
             return new RedirectView(clientURL+"reg-fail");
         }
     }
-
+    public UserDetails getLoggedInUserDetails(){
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(authentication != null && authentication.getPrincipal() instanceof UserDetails){
+            return (UserDetails) authentication.getPrincipal();
+        }
+        return null;
+    }
 }
