@@ -42,5 +42,12 @@ public User getUserByEmail(String email){
     userExsisting.setVerificationCode(null);
     userRepo.save(userExsisting);
     }
-
+    public void saveUser(User user){
+        try {
+            userRepo.save(user);
+        }
+        catch (Exception e){
+            e.toString();
+        }
+    }
 }

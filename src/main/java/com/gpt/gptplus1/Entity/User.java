@@ -1,10 +1,11 @@
 package com.gpt.gptplus1.Entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 @Entity
@@ -14,16 +15,37 @@ public class User {
     @NotNull
     private int userId;
 
+    @JsonManagedReference
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChatMsg> chatHistory = new ArrayList<>();
+
     private String firstName;
     private String lastName;
     private String email;
     private String phone;
     private String password;
+    private String apiKey;
 
     private String verificationCode;
 
     private boolean enabled;
     private String role;
+
+    public List<ChatMsg> getChatHistory() {
+        return chatHistory;
+    }
+
+    public void setChatHistory(List<ChatMsg> chatHistory) {
+        this.chatHistory = chatHistory;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
 
     public int getUserId() {
         return userId;

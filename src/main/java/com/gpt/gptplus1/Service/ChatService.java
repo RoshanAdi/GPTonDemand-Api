@@ -1,42 +1,100 @@
 package com.gpt.gptplus1.Service;
-
-import com.theokanning.openai.OpenAiHttpException;
+import com.gpt.gptplus1.Entity.ChatMsg;
+import com.gpt.gptplus1.Entity.User;
+import com.gpt.gptplus1.Repository.ChatMsgRepo;
+import com.gpt.gptplus1.Repository.UserRepo;
 import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatCompletionResult;
 import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
+@Service
 public class ChatService {
-    public ChatService() {
+    @Autowired
+    UserRepo userRepo;
+    @Autowired
+    ChatMsgRepo chatMsgRepo;
 
-        //String apiKey = "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";
-        String apiKey = "sk-SW7JgCrtK0OVQbxlusPWT3BlbkFJ3vE6LO1o7XXmj2qa3I";
 
-        // Create an OpenAiService instance with your API key
-        OpenAiService openAiService = new OpenAiService(apiKey);
 
-        // Create a ChatCompletionRequest
-        ChatCompletionRequest request = new ChatCompletionRequest();
-        request.setModel("gpt-4");
 
-        List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new ChatMessage("system", ""));
-        chatMessages.add(new ChatMessage("user", "your gpt model?"));
-        request.setMessages(chatMessages);
+    public ChatMsg ChatService2(User user1, ChatMsg chatMsg) {
 
-try {
-    // Call the createChatCompletion method to get a ChatCompletionResult
-    ChatCompletionResult chatCompletionResult = openAiService.createChatCompletion(request);
+        User user = userRepo.findByEmail(user1.getEmail());
+        List<ChatMsg> chatMsgs = user.getChatHistory();
+        chatMsg.setUser(user1);
+        chatMsgs.add(chatMsg);
+        if (chatMsg.getMaxHistory()<150){chatMsg.setMaxHistory(150);}
+        chatMsgs = limitChatHistoryLength(user1,chatMsg,chatMsg.getMaxHistory());
+        String token = user.getApiKey();
+        OpenAiService service = new OpenAiService(token, Duration.ofSeconds(30));
+        System.out.println("Streaming chat completion...");
+        final List<ChatMessage> messages = new ArrayList<>();
 
-    // Print the assistant's reply
-    System.out.println("Assistant's reply: " + chatCompletionResult.getChoices().get(0).getMessage().getContent());
-}
-catch (OpenAiHttpException e) {
-    System.err.println("OpenAI API request failed with status code: " + e.getMessage());
-    System.err.println("Error message: " + e.getMessage());
-}
+        for (ChatMsg chatMsg1 : chatMsgs) {
+            ChatMessage chatMessage = new ChatMessage();
+            chatMessage.setContent(chatMsg1.getContent());
+            chatMessage.setRole(chatMsg1.getRole());
+            messages.add(chatMessage);
+        }
+        final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), chatMsg.getSystemMassage());
+        if (chatMsg.getSystemMassage() != null && chatMsg.getSystemMassage().length()>2){messages.add(systemMessage);}
+        if (chatMsg.getModel()==null ){chatMsg.setModel("gpt-4");}
+        if (chatMsg.getMaxTokens()<2){chatMsg.setMaxTokens(50);}
+        ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest
+                .builder()
+                .model(chatMsg.getModel())
+                .messages(messages)
+                .n(1)
+                .maxTokens(chatMsg.getMaxTokens())
+                .logitBias(new HashMap<>())
+                .build();
+
+        ChatMessage responseMessage = service.createChatCompletion(chatCompletionRequest).getChoices().get(0).getMessage();
+        ChatMsg chatMsg1 = new ChatMsg();
+        chatMsg1.setContent(responseMessage.getContent());
+        chatMsg1.setRole(responseMessage.getRole());
+        chatMsg1.setUser(user);
+        chatMsgs.add(chatMsg1);
+        user.setChatHistory(chatMsgs);
+userRepo.save(user);
+        messages.add(responseMessage);
+        for (ChatMessage message : messages) {
+            System.out.println(message);
+        }
+
+       // service.shutdownExecutor();
+        return chatMsg;
     }
-}
+    public List<ChatMsg> limitChatHistoryLength(User user, ChatMsg currentMsg, int maxLength) {
+        List<ChatMsg> chatMsgs = user.getChatHistory();
+
+        // Calculate the current total length of chatMsgs including the current and system messages
+        int currentLength = chatMsgs.stream()
+                .mapToInt(msg -> msg.getContent().length())
+                .sum();
+
+        // Add the length of the current message
+        currentLength += currentMsg.getContent().length();
+
+        // Add the length of the system message
+       if (currentMsg.getSystemMassage() != null) {
+            currentLength += currentMsg.getSystemMassage().length();
+        }
+
+        // Check if the current length exceeds the limit
+        while (currentLength > maxLength && !chatMsgs.isEmpty()) {
+            // Remove the earliest message
+            ChatMsg removedMsg = chatMsgs.remove(0);
+            currentLength -= removedMsg.getContent().length();
+        }
+
+        return  chatMsgs;
+    }
+    }
