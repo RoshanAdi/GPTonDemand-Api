@@ -30,10 +30,10 @@ public class ChatService {
         List<ChatMsg> chatMsgs = user.getChatHistory();
         chatMsg.setUser(user1);
         chatMsgs.add(chatMsg);
-        if (chatMsg.getMaxHistory()<150){chatMsg.setMaxHistory(150);}
+        if (chatMsg.getMaxHistory()<150){chatMsg.setMaxHistory(300);}
         chatMsgs = limitChatHistoryLength(user1,chatMsg,chatMsg.getMaxHistory());
         String token = user.getApiKey();
-        OpenAiService service = new OpenAiService(token, Duration.ofSeconds(30));
+        OpenAiService service = new OpenAiService(token, Duration.ofSeconds(150));
         System.out.println("Streaming chat completion...");
         final List<ChatMessage> messages = new ArrayList<>();
 
@@ -45,8 +45,8 @@ public class ChatService {
         }
         final ChatMessage systemMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), chatMsg.getSystemMassage());
         if (chatMsg.getSystemMassage() != null && chatMsg.getSystemMassage().length()>2){messages.add(systemMessage);}
-        if (chatMsg.getModel()==null ){chatMsg.setModel("gpt-4");}
-        if (chatMsg.getMaxTokens()<2){chatMsg.setMaxTokens(50);}
+        if (chatMsg.getModel()==null ){chatMsg.setModel("gpt-3.5-turbo");}
+        if (chatMsg.getMaxTokens()<2){chatMsg.setMaxTokens(250);}
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest
                 .builder()
                 .model(chatMsg.getModel())
@@ -56,12 +56,13 @@ public class ChatService {
                 .logitBias(new HashMap<>())
                 .build();
 
-        ChatMessage responseMessage = service.createChatCompletion(chatCompletionRequest).getChoices().get(0).getMessage();
-        ChatMsg chatMsg1 = new ChatMsg();
-        chatMsg1.setContent(responseMessage.getContent());
-        chatMsg1.setRole(responseMessage.getRole());
-        chatMsg1.setUser(user);
-        chatMsgs.add(chatMsg1);
+        ChatMessage responseMessage = service.createChatCompletion(chatCompletionRequest).getChoices().get(0)
+                .getMessage();
+        ChatMsg responseMsg = new ChatMsg();
+        responseMsg.setContent(responseMessage.getContent());
+        responseMsg.setRole(responseMessage.getRole());
+        responseMsg.setUser(user);
+        chatMsgs.add(responseMsg);
         user.setChatHistory(chatMsgs);
 userRepo.save(user);
         messages.add(responseMessage);
@@ -70,7 +71,7 @@ userRepo.save(user);
         }
 
        // service.shutdownExecutor();
-        return chatMsg;
+        return responseMsg;
     }
     public List<ChatMsg> limitChatHistoryLength(User user, ChatMsg currentMsg, int maxLength) {
         List<ChatMsg> chatMsgs = user.getChatHistory();

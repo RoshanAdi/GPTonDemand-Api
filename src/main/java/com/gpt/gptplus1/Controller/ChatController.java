@@ -54,6 +54,35 @@ import java.util.Map;
         User user = getUser();
         System.out.println("role = "+chatMsg.getRole());
         System.out.println("content = "+chatMsg.getContent());
+        String code = " have a full library loader at the end. For loops in Power Query. using For(x=0; x<5; x++) loops in Power Query. Simple Favorite. I use List ```<pre><code [highlight]=code (highlighted)=onHighlight($event)  ></code></pre>  imports: [RouterModule.forRoot(routes)," +
+                "    BrowserModule," +
+                "    FormsModule,HttpClientModule, AppRoutingModule, BrowserAnimationsModule,MatProgressSpinnerModule,AlertModule.forRoot(),HighlightModule,HighlightPlusModule," +
+                "  ]," +
+                "  providers: [{" +
+                "    provide: HTTP_INTERCEPTORS," +
+                "    useClass: AuthInterceptor," +
+                "    multi: true," +
+                "  }," +
+                "    {" +
+                "      provide: HIGHLIGHT_OPTIONS," +
+                "      useValue: <HighlightOptions>{" +
+                "        lineNumbers: true," +
+                "        autoHighlight: true," +
+                "        //coreLibraryLoader: () => import('highlight.js/lib/core')," +
+                "        lineNumbersLoader: () => import('ngx-highlightjs/line-numbers')," +
+                "        themePath: 'node_modules/highlight.js/styles/github.css'," +
+                "        fullLibraryLoader: () => import('highlight.js')," +
+                "      }," +
+                "    },{" +
+                "    provide: HTTP_INTERCEPTORS," +
+                "    useClass: LoaderInterceptor," +
+                "    multi: true" +
+                "  }]," +
+                "  bootstrap: [AppComponent]" +
+                "})" +
+                "export class AppModule { } ``` but you do it";
+        //chatService.ChatService2(user,chatMsg); //return this
+       // chatMsg.setContent(code);
         return chatService.ChatService2(user,chatMsg);
     }
 }
